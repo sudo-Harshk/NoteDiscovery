@@ -30,6 +30,30 @@ const ErrorHandler = {
     }
 };
 
+// Prompt user for a valid name (notes/folders) with consistent validation UX
+function promptForValidName(message, defaultValue = '') {
+    const invalidChars = /[^a-zA-Z0-9-_.\s\/]/;
+    let promptMessage = message;
+    let currentValue = defaultValue;
+    
+    while (true) {
+        const input = window.prompt(promptMessage, currentValue);
+        if (input === null) return null; // User cancelled
+        
+        const trimmed = input.trim();
+        if (!trimmed) return null; // Treat empty as cancelled/invalid
+        
+        if (invalidChars.test(trimmed)) {
+            // Re-prompt with clear guidance, preserving the user's input
+            promptMessage = '⚠️ Invalid characters detected.\n\nAllowed: letters, numbers, spaces, dots (.), dashes (-), underscores (_), and slashes (/).\n\nPlease rename:';
+            currentValue = input;
+            continue;
+        }
+        
+        return trimmed;
+    }
+}
+
 function noteApp() {
     return {
         // App state
@@ -2462,14 +2486,8 @@ function noteApp() {
                 ? `Create note in "${targetFolder}".\nEnter note name:`
                 : 'Enter note name (you can use folder/name):';
             
-            const noteName = prompt(promptText);
-            if (!noteName) return;
-            
-            const sanitizedName = noteName.trim().replace(/[^a-zA-Z0-9-_\s\/]/g, '');
-            if (!sanitizedName) {
-                alert('Invalid note name.');
-                return;
-            }
+            const sanitizedName = promptForValidName(promptText);
+            if (!sanitizedName) return;
             
             let notePath;
             if (targetFolder) {
@@ -2523,14 +2541,8 @@ function noteApp() {
                 ? `Create subfolder in "${targetFolder}".\nEnter folder name:`
                 : 'Create new folder.\nEnter folder path (e.g., "Projects" or "Work/2025"):';
             
-            const folderName = prompt(promptText);
-            if (!folderName) return;
-            
-            const sanitizedName = folderName.trim().replace(/[^a-zA-Z0-9-_\s\/]/g, '');
-            if (!sanitizedName) {
-                alert('Invalid folder name.');
-                return;
-            }
+            const sanitizedName = promptForValidName(promptText);
+            if (!sanitizedName) return;
             
             const folderPath = targetFolder ? `${targetFolder}/${sanitizedName}` : sanitizedName;
             
@@ -2942,12 +2954,10 @@ function noteApp() {
             if (!this.currentNote) return;
             
             const oldPath = this.currentNote;
-            const newName = this.currentNoteName.trim();
-            
-            if (!newName) {
-                alert('Note name cannot be empty.');
-                return;
-            }
+            const existingName = this.currentNoteName || oldPath.split('/').pop().replace('.md', '');
+            const newName = promptForValidName(`Rename note "${existingName}" to:`, existingName);
+            if (!newName) return;
+            this.currentNoteName = newName;
             
             const folder = oldPath.split('/').slice(0, -1).join('/');
             const newPath = folder ? `${folder}/${newName}.md` : `${newName}.md`;
