@@ -45,14 +45,18 @@ function promptForValidName(message, defaultValue = '') {
         const trimmed = input.trim();
         if (!trimmed) return null; // Treat empty as cancelled/invalid
         
-        if (invalidChars.test(trimmed)) {
+        // Strip leading slashes to prevent backend absolute path errors
+        let sanitized = trimmed.replace(/^\/+/, '');
+        if (!sanitized) return null; // Treat empty after stripping as cancelled/invalid
+        
+        if (invalidChars.test(sanitized)) {
             // Re-prompt with clear guidance, preserving the user's input
             promptMessage = '⚠️ Invalid characters detected.\n\nAllowed: letters, numbers, spaces, dots (.), dashes (-), underscores (_), and slashes (/).\n\nPlease rename:';
             currentValue = input;
             continue;
         }
         
-        return trimmed;
+        return sanitized;
     }
 }
 
@@ -150,7 +154,11 @@ function noteApp() {
         
         // Stats plugin state
         statsPluginEnabled: false,
-        noteStats: null,
+        noteStats: {
+            headings: { total: 0, h1: 0, h2: 0 },
+            words: 0,
+            chars: 0
+        },
         statsExpanded: false,
         
         // Note metadata (frontmatter) state
@@ -3030,7 +3038,8 @@ function noteApp() {
             if (!this.currentNote) return;
             
             const oldPath = this.currentNote;
-            const existingName = this.currentNoteName || oldPath.split('/').pop().replace('.md', '');
+            // Fix: Always derive the name from the actual file path, not from stale state
+            const existingName = oldPath.split('/').pop().replace('.md', '');
             const newName = promptForValidName(`Rename note "${existingName}" to:`, existingName);
             if (!newName) return;
             this.currentNoteName = newName;
